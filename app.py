@@ -4,6 +4,7 @@ import json
 import base64
 import hashlib
 import zlib
+import urllib.request
 from urllib.parse import urlencode, quote, unquote
 
 import altair as alt
@@ -337,6 +338,19 @@ def decompress_data(encoded_data):
     except Exception as e:
         st.error(f"Failed to load shared Wrapped: {str(e)}")
         return None
+
+
+def shorten_url(long_url: str) -> str:
+    """Shorten URLs via is.gd; fallback to long URL on failure."""
+    try:
+        api_url = f"https://is.gd/create.php?format=simple&url={quote(long_url)}"
+        with urllib.request.urlopen(api_url, timeout=5) as resp:
+            short = resp.read().decode().strip()
+            if short.startswith("http"):
+                return short
+    except Exception:
+        pass
+    return long_url
 
 # Initialize shared data cache in session state
 if 'shared_wrappeds' not in st.session_state:
@@ -877,7 +891,8 @@ if uploaded or st.session_state.is_shared_view:
         
         # Compress and encode the wrapped data for the URL
         compressed_data = compress_data(st.session_state.wrapped_data)
-        wrapped_link = f"{current_url}?data={compressed_data}"
+        long_link = f"{current_url}?data={compressed_data}"
+        wrapped_link = shorten_url(long_link)
         
         # URL encode the message with link
         share_text_with_link = share_text + f"\n\n🔗 View the full experience: {wrapped_link}"
