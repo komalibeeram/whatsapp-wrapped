@@ -3,7 +3,8 @@ from datetime import datetime
 import json
 import base64
 import hashlib
-from urllib.parse import urlencode
+import zlib
+from urllib.parse import urlencode, quote, unquote
 
 import altair as alt
 import pandas as pd
@@ -320,33 +321,54 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# Helper functions for data compression/decompression
+def compress_data(data):
+    """Compress data to reduce URL length"""
+    json_str = json.dumps(data, default=str)
+    compressed = zlib.compress(json_str.encode())
+    return base64.urlsafe_b64encode(compressed).decode()
+
+def decompress_data(encoded_data):
+    """Decompress data from URL parameter"""
+    try:
+        compressed = base64.urlsafe_b64decode(encoded_data.encode())
+        json_str = zlib.decompress(compressed).decode()
+        return json.loads(json_str)
+    except Exception as e:
+        st.error(f"Failed to load shared Wrapped: {str(e)}")
+        return None
+
 # Initialize shared data cache in session state
 if 'shared_wrappeds' not in st.session_state:
     st.session_state.shared_wrappeds = {}
 
 # Check for shared wrapped link
 query_params = st.query_params
-shared_id = query_params.get("wrapped_id", None)
+shared_data_param = query_params.get("data", None)
 
 # Determine if we're in shared view mode
-if shared_id and shared_id in st.session_state.shared_wrappeds:
-    # Load shared wrapped data
-    shared_data = st.session_state.shared_wrappeds[shared_id]
-    stats = shared_data["stats"]
-    ai = shared_data.get("ai")
-    story_copy = shared_data.get("story_copy")
+if shared_data_param:
+    # Decompress data from URL
+    shared_data = decompress_data(shared_data_param)
     
-    st.session_state.is_shared_view = True
-    st.session_state.current_wrapped_id = shared_id
-    uploaded = None
-    
-    # Show title for shared view
-    st.title("WhatsApp Wrapped")
-    st.markdown(
-        f"<div style='text-align:center; opacity:0.5; font-size:12px; margin-bottom:32px;'>"
-        f"🔗 Viewing shared Wrapped</div>",
-        unsafe_allow_html=True
-    )
+    if shared_data:
+        stats = shared_data.get("stats")
+        ai = shared_data.get("ai")
+        story_copy = shared_data.get("story_copy")
+        
+        st.session_state.is_shared_view = True
+        uploaded = None
+        
+        # Show title for shared view
+        st.title("WhatsApp Wrapped")
+        st.markdown(
+            f"<div style='text-align:center; opacity:0.5; font-size:12px; margin-bottom:32px;'>"
+            f"🔗 Viewing shared Wrapped</div>",
+            unsafe_allow_html=True
+        )
+    else:
+        st.session_state.is_shared_view = False
+        uploaded = None
 else:
     st.session_state.is_shared_view = False
     
@@ -500,23 +522,14 @@ if uploaded or st.session_state.is_shared_view:
         # Generate AI copy for Story tab
         story_copy = generate_story_copy(stats) if _has_api_key() else None
         
-        # Generate unique ID for this wrapped and store data
-        if 'current_wrapped_id' not in st.session_state:
-            # Create unique ID from timestamp and stats hash
-            timestamp = str(datetime.now().timestamp())
-            stats_str = json.dumps(stats, sort_keys=True, default=str)
-            unique_hash = hashlib.md5((timestamp + stats_str).encode()).hexdigest()[:8]
-            wrapped_id = f"{unique_hash}"
-            
-            # Store wrapped data
-            st.session_state.shared_wrappeds[wrapped_id] = {
+        # Generate compressed data for sharing (no need for ID - data is in URL)
+        if 'wrapped_data' not in st.session_state:
+            wrapped_data = {
                 "stats": stats,
                 "ai": ai,
                 "story_copy": story_copy,
             }
-            st.session_state.current_wrapped_id = wrapped_id
-        else:
-            wrapped_id = st.session_state.current_wrapped_id
+            st.session_state.wrapped_data = wrapped_data
     
     # If in shared view, stats/ai/story_copy are already loaded from session state
     # Define hour_label helper for both paths
@@ -859,9 +872,12 @@ if uploaded or st.session_state.is_shared_view:
 
 #WhatsAppWrapped"""
         
-        # Generate shareable link
-        current_url = "https://kb-whatsapp-wrapped.streamlit.app/"  # Update with your actual deployment URL
-        wrapped_link = f"{current_url}?wrapped_id={st.session_state.current_wrapped_id}"
+        # Generate shareable link with compressed data
+        current_url = "https://kb-whatsapp-wrapped.streamlit.app"  # Update with your actual deployment URL
+        
+        # Compress and encode the wrapped data for the URL
+        compressed_data = compress_data(st.session_state.wrapped_data)
+        wrapped_link = f"{current_url}?data={compressed_data}"
         
         # URL encode the message with link
         share_text_with_link = share_text + f"\n\n🔗 View the full experience: {wrapped_link}"
