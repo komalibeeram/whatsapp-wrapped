@@ -860,7 +860,7 @@ if uploaded or st.session_state.is_shared_view:
 #WhatsAppWrapped"""
         
         # Generate shareable link
-        current_url = "http://localhost:8501"  # Update with your actual deployment URL
+        current_url = "https://kb-whatsapp-wrapped.streamlit.app/"  # Update with your actual deployment URL
         wrapped_link = f"{current_url}?wrapped_id={st.session_state.current_wrapped_id}"
         
         # URL encode the message with link
