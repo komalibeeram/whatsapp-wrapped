@@ -324,9 +324,9 @@ st.markdown(
 
 # Helper functions for data compression/decompression
 def compress_data(data):
-    """Compress data to reduce URL length"""
+    """Compress data to reduce URL length (max compression)."""
     json_str = json.dumps(data, default=str)
-    compressed = zlib.compress(json_str.encode())
+    compressed = zlib.compress(json_str.encode(), level=9)
     return base64.urlsafe_b64encode(compressed).decode()
 
 def decompress_data(encoded_data):
@@ -341,15 +341,20 @@ def decompress_data(encoded_data):
 
 
 def shorten_url(long_url: str) -> str:
-    """Shorten URLs via is.gd; fallback to long URL on failure."""
-    try:
-        api_url = f"https://is.gd/create.php?format=simple&url={quote(long_url)}"
-        with urllib.request.urlopen(api_url, timeout=5) as resp:
-            short = resp.read().decode().strip()
-            if short.startswith("http"):
-                return short
-    except Exception:
-        pass
+    """Shorten URLs via multiple free services; fallback to long URL on failure."""
+    services = [
+        "https://tinyurl.com/api-create.php?url=",
+        "https://is.gd/create.php?format=simple&url=",
+    ]
+    for base in services:
+        try:
+            api_url = f"{base}{quote(long_url)}"
+            with urllib.request.urlopen(api_url, timeout=6) as resp:
+                short = resp.read().decode().strip()
+                if short.startswith("http"):
+                    return short
+        except Exception:
+            continue
     return long_url
 
 
@@ -367,7 +372,7 @@ if 'ai_rate_limited' not in st.session_state:
 
 # Check for shared wrapped link
 query_params = st.query_params
-shared_data_param = query_params.get("data", None)
+shared_data_param = query_params.get("d", None) or query_params.get("data", None)
 
 # Determine if we're in shared view mode
 if shared_data_param:
@@ -905,7 +910,7 @@ if uploaded or st.session_state.is_shared_view:
     
     # Compress and encode the wrapped data for the URL
     compressed_data = compress_data(st.session_state.wrapped_data)
-    long_link = f"{current_url}?data={compressed_data}"
+    long_link = f"{current_url}?d={compressed_data}"
     wrapped_link = shorten_url(long_link)
     
     # URL encode the message with link
