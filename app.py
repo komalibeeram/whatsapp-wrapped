@@ -352,9 +352,18 @@ def shorten_url(long_url: str) -> str:
         pass
     return long_url
 
+
+def is_rate_limit_error(err: Exception | str) -> bool:
+    """Detect rate limit / 429 messages."""
+    msg = str(err).lower() if err is not None else ""
+    return "rate limit" in msg or "429" in msg
+
 # Initialize shared data cache in session state
 if 'shared_wrappeds' not in st.session_state:
     st.session_state.shared_wrappeds = {}
+
+if 'ai_rate_limited' not in st.session_state:
+    st.session_state.ai_rate_limited = False
 
 # Check for shared wrapped link
 query_params = st.query_params
@@ -470,7 +479,11 @@ def generate_story_copy(stats_dict):
             else:
                 return None
     except Exception as e:
-        st.warning(f"Could not generate AI copy: {str(e)}")
+        if is_rate_limit_error(e):
+            st.session_state.ai_rate_limited = True
+            st.info("AI is cooling off for a few minutes (rate limit). Story copy will reappear once the limit resets.")
+        else:
+            st.warning(f"Could not generate AI copy: {str(e)}")
         return None
 
 
@@ -485,6 +498,8 @@ if uploaded or st.session_state.is_shared_view:
             st.stop()
 
         stats = compute_stats(df)
+        # Reset rate-limit flag for a fresh run
+        st.session_state.ai_rate_limited = False
 
         # Helper formatting
         def hour_label(h):
@@ -530,8 +545,12 @@ if uploaded or st.session_state.is_shared_view:
             with st.spinner("✨ Analyzing your chat vibe..."):
                 try:
                     ai = cached_insights(stats, chunk_snapshot)
-                except RuntimeError as e:
-                    st.warning(f"AI insights unavailable: {str(e)}")
+                except Exception as e:
+                    if is_rate_limit_error(e):
+                        st.session_state.ai_rate_limited = True
+                        st.info("AI is cooling off for a few minutes (rate limit). Your stats still load fine.")
+                    else:
+                        st.warning(f"AI insights unavailable: {str(e)}")
 
         # Generate AI copy for Story tab
         story_copy = generate_story_copy(stats) if _has_api_key() else None
@@ -547,6 +566,9 @@ if uploaded or st.session_state.is_shared_view:
     
     # If in shared view, stats/ai/story_copy are already loaded from session state
     # Define hour_label helper for both paths
+    if st.session_state.get("ai_rate_limited"):
+        st.info("AI is cooling off for a few minutes due to rate limits. Stats are still available; try AI sections again shortly.")
+
     def hour_label(h):
         if h is None:
             return "-"
