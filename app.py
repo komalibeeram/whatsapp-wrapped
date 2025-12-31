@@ -481,9 +481,6 @@ def generate_story_copy(stats_dict):
     except Exception as e:
         if is_rate_limit_error(e):
             st.session_state.ai_rate_limited = True
-            st.info("AI is cooling off for a few minutes (rate limit). Story copy will reappear once the limit resets.")
-        else:
-            st.warning(f"Could not generate AI copy: {str(e)}")
         return None
 
 
@@ -548,9 +545,7 @@ if uploaded or st.session_state.is_shared_view:
                 except Exception as e:
                     if is_rate_limit_error(e):
                         st.session_state.ai_rate_limited = True
-                        st.info("AI is cooling off for a few minutes (rate limit). Your stats still load fine.")
-                    else:
-                        st.warning(f"AI insights unavailable: {str(e)}")
+                        # st.info("AI is cooling off for a few minutes (rate limit). Your stats still load fine.")
 
         # Generate AI copy for Story tab
         story_copy = generate_story_copy(stats) if _has_api_key() else None
@@ -566,8 +561,8 @@ if uploaded or st.session_state.is_shared_view:
     
     # If in shared view, stats/ai/story_copy are already loaded from session state
     # Define hour_label helper for both paths
-    if st.session_state.get("ai_rate_limited"):
-        st.info("AI is cooling off for a few minutes due to rate limits. Stats are still available; try AI sections again shortly.")
+    # if st.session_state.get("ai_rate_limited"):
+        # st.info("AI is cooling off for a few minutes due to rate limits. Stats are still available; try AI sections again shortly.")
 
     def hour_label(h):
         if h is None:
@@ -867,39 +862,36 @@ if uploaded or st.session_state.is_shared_view:
 
         st.markdown("<br><br>", unsafe_allow_html=True)
 
-        # ========================================
-        # SHAREABLE FINAL CARD
-        # ========================================
-        st.markdown("<div class='section-title'>📸 Share Your Vibe</div>", unsafe_allow_html=True)
-        
-        # Use canonical identity from hero section
-        share_statement = f"Your group vibe: {identity_label}"
-        
-        # Generate social caption
-        social_caption = f"Your chats run on midnight energy 🕛✨\\n#WhatsAppWrapped"
-        
-        st.markdown(
-            f"""
-            <div style='padding:36px 24px; border-radius:16px; background:{theme['share_bg']}; 
-                 color:#ffffff; text-align:center; box-shadow: 0 8px 24px rgba(0,0,0,0.3);'>
-                <div style='font-size:26px; font-weight:800; line-height:1.3; margin-bottom:12px;'>
-                    {share_statement}
-                </div>
-                <div style='font-size:13px; opacity:0.9; margin-top:16px; letter-spacing:0.5px; font-weight:600;'>
-                    WhatsApp Wrapped • AI-powered
-                </div>
+    # ========================================
+    # SHAREABLE FINAL CARD (always shown, outside AI block)
+    # ========================================
+    st.markdown("<div class='section-title'>📸 Share Your Vibe</div>", unsafe_allow_html=True)
+    
+    # Use canonical identity from hero section
+    share_statement = f"Your group vibe: {identity_label}"
+    
+    st.markdown(
+        f"""
+        <div style='padding:36px 24px; border-radius:16px; background:{theme['share_bg']}; 
+             color:#ffffff; text-align:center; box-shadow: 0 8px 24px rgba(0,0,0,0.3);'>
+            <div style='font-size:26px; font-weight:800; line-height:1.3; margin-bottom:12px;'>
+                {share_statement}
             </div>
-            """,
-            unsafe_allow_html=True,
-        )
+            <div style='font-size:13px; opacity:0.9; margin-top:16px; letter-spacing:0.5px; font-weight:600;'>
+                WhatsApp Wrapped • AI-powered
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    
+    st.markdown("<br>", unsafe_allow_html=True)
         
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        # WhatsApp share button
-        import urllib.parse
-        
-        # Create shareable message
-        share_text = f"""🎉 My WhatsApp Wrapped is here!
+    # WhatsApp share button
+    import urllib.parse
+    
+    # Create shareable message
+    share_text = f"""🎉 My WhatsApp Wrapped is here!
 
 {share_statement}
 
@@ -907,99 +899,99 @@ if uploaded or st.session_state.is_shared_view:
 ⚡ Most active: {stats.get('most_active_day', 'weekends')} at {hour_label(stats.get('most_active_hour'))}
 
 #WhatsAppWrapped"""
-        
-        # Generate shareable link with compressed data
-        current_url = "https://kb-whatsapp-wrapped.streamlit.app"  # Update with your actual deployment URL
-        
-        # Compress and encode the wrapped data for the URL
-        compressed_data = compress_data(st.session_state.wrapped_data)
-        long_link = f"{current_url}?data={compressed_data}"
-        wrapped_link = shorten_url(long_link)
-        
-        # URL encode the message with link
-        share_text_with_link = share_text + f"\n\n🔗 View the full experience: {wrapped_link}"
-        encoded_text = urllib.parse.quote(share_text_with_link)
-        whatsapp_url = f"https://wa.me/?text={encoded_text}"
-        
-        # Share buttons with WhatsApp styling
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown(
-                f"""
-                <div style='text-align:center;'>
-                    <a href="{whatsapp_url}" target="_blank" style='text-decoration:none;'>
-                        <div style='display:inline-block; padding:14px 32px; background:#25D366; color:white; 
-                             border-radius:30px; font-weight:700; font-size:15px; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.4);
-                             transition: all 200ms ease; cursor:pointer;'>
-                            <span style='font-size:18px; margin-right:8px;'>💬</span>
-                            Share on WhatsApp
-                        </div>
-                    </a>
-                </div>
-                
-                <style>
-                a:hover div {{
-                    background: #20BA5A !important;
-                    transform: translateY(-2px);
-                    box-shadow: 0 6px 16px rgba(37, 211, 102, 0.5);
-                }}
-                </style>
-                """,
-                unsafe_allow_html=True,
-            )
-        
-        with col2:
-            # Copy link button with JavaScript
-            st.markdown(
-                f"""
-                <div style='text-align:center;'>
-                    <div id='copy-btn' onclick='copyToClipboard()' style='display:inline-block; padding:14px 32px; background:#1F2C34; color:#25D366; 
-                         border: 2px solid #25D366; border-radius:30px; font-weight:700; font-size:15px; 
-                         box-shadow: 0 4px 12px rgba(37, 211, 102, 0.2);
+    
+    # Generate shareable link with compressed data
+    current_url = "https://kb-whatsapp-wrapped.streamlit.app"  # Update with your actual deployment URL
+    
+    # Compress and encode the wrapped data for the URL
+    compressed_data = compress_data(st.session_state.wrapped_data)
+    long_link = f"{current_url}?data={compressed_data}"
+    wrapped_link = shorten_url(long_link)
+    
+    # URL encode the message with link
+    share_text_with_link = share_text + f"\n\n🔗 View the full experience: {wrapped_link}"
+    encoded_text = urllib.parse.quote(share_text_with_link)
+    whatsapp_url = f"https://wa.me/?text={encoded_text}"
+    
+    # Share buttons with WhatsApp styling
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown(
+            f"""
+            <div style='text-align:center;'>
+                <a href="{whatsapp_url}" target="_blank" style='text-decoration:none;'>
+                    <div style='display:inline-block; padding:14px 32px; background:#25D366; color:white; 
+                         border-radius:30px; font-weight:700; font-size:15px; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.4);
                          transition: all 200ms ease; cursor:pointer;'>
-                        <span style='font-size:18px; margin-right:8px;'>🔗</span>
-                        <span id='copy-text'>Copy Link</span>
+                        <span style='font-size:18px; margin-right:8px;'>💬</span>
+                        Share on WhatsApp
                     </div>
+            </div>
+            
+            <style>
+            a:hover div {{
+                background: #20BA5A !important;
+                transform: translateY(-2px);
+                box-shadow: 0 6px 16px rgba(37, 211, 102, 0.5);
+            }}
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+    
+    with col2:
+        # Copy link button with JavaScript
+        st.markdown(
+            f"""
+            <div style='text-align:center;'>
+                <div id='copy-btn' onclick='copyToClipboard()' style='display:inline-block; padding:14px 32px; background:#1F2C34; color:#25D366; 
+                     border: 2px solid #25D366; border-radius:30px; font-weight:700; font-size:15px; 
+                     box-shadow: 0 4px 12px rgba(37, 211, 102, 0.2);
+                     transition: all 200ms ease; cursor:pointer;'>
+                    <span style='font-size:18px; margin-right:8px;'>🔗</span>
+                    <span id='copy-text'>Copy Link</span>
                 </div>
-                
-                <script>
-                function copyToClipboard() {{
-                    const link = "{wrapped_link}";
-                    navigator.clipboard.writeText(link).then(function() {{
-                        const btn = document.getElementById('copy-btn');
-                        const text = document.getElementById('copy-text');
-                        text.textContent = 'Copied!';
-                        btn.style.background = '#25D366';
-                        btn.style.color = 'white';
+            </div>
+            
+            <script>
+            function copyToClipboard() {{
+                const link = "{wrapped_link}";
+                navigator.clipboard.writeText(link).then(function() {{
+                    const btn = document.getElementById('copy-btn');
+                    const text = document.getElementById('copy-text');
+                    text.textContent = 'Copied!';
+                    btn.style.background = '#25D366';
+                    btn.style.color = 'white';
+                    btn.style.borderColor = '#25D366';
+                    setTimeout(function() {{
+                        text.textContent = 'Copy Link';
+                        btn.style.background = '#1F2C34';
+                        btn.style.color = '#25D366';
                         btn.style.borderColor = '#25D366';
-                        setTimeout(function() {{
-                            text.textContent = 'Copy Link';
-                            btn.style.background = '#1F2C34';
-                            btn.style.color = '#25D366';
-                            btn.style.borderColor = '#25D366';
-                        }}, 2000);
-                    }});
-                }}
-                </script>
-                
-                <style>
-                #copy-btn:hover {{
-                    background: #25D366 !important;
-                    color: white !important;
-                    transform: translateY(-2px);
-                    box-shadow: 0 6px 16px rgba(37, 211, 102, 0.5);
-                }}
-                </style>
-                """,
-                unsafe_allow_html=True,
-            )
+                    }}, 2000);
+                }});
+            }}
+            </script>
+            
+            <style>
+            #copy-btn:hover {{
+                background: #25D366 !important;
+                color: white !important;
+                transform: translateY(-2px);
+                box-shadow: 0 6px 16px rgba(37, 211, 102, 0.5);
+            }}
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
 
-        st.markdown("---")
-        
-        # ========================================
-        # 5. INTERACTIVE Q&A (bottom of flow)
-        # ========================================
+    st.markdown("---")
+    
+    # ========================================
+    # 5. INTERACTIVE Q&A (bottom of flow)
+    # ========================================
+    if ai:
         st.markdown("<div class='section-title'>🤔 Ask the Chat</div>", unsafe_allow_html=True)
         question = st.text_input("Ask anything about this chat (AI will answer from context)")
         if question:
