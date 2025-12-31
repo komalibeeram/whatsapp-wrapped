@@ -388,7 +388,12 @@ if shared_data_param:
         uploaded = None
         
         # Show title for shared view
-        st.title("WhatsApp Wrapped")
+        st.markdown(
+            "<h1 style='text-align:center; margin-bottom:8px;'>"
+            "<a href='https://kb-whatsapp-wrapped.streamlit.app/' style='text-decoration:none; color:inherit;'>WhatsApp Wrapped</a>"
+            "</h1>",
+            unsafe_allow_html=True,
+        )
         st.markdown(
             f"<div style='text-align:center; opacity:0.5; font-size:12px; margin-bottom:32px;'>"
             f"🔗 Viewing shared Wrapped</div>",
@@ -400,7 +405,12 @@ if shared_data_param:
 else:
     st.session_state.is_shared_view = False
     
-    st.title("WhatsApp Wrapped")
+    st.markdown(
+        "<h1 style='text-align:center; margin-bottom:8px;'>"
+        "<a href='https://kb-whatsapp-wrapped.streamlit.app/' style='text-decoration:none; color:inherit;'>WhatsApp Wrapped</a>"
+        "</h1>",
+        unsafe_allow_html=True,
+    )
 
     # Only show upload UI if no file is uploaded yet and not viewing shared link
     if 'uploaded' not in st.session_state or st.session_state.uploaded is None:
@@ -896,7 +906,7 @@ if uploaded or st.session_state.is_shared_view:
     import urllib.parse
     
     # Create shareable message
-    share_text = f"""🎉 My WhatsApp Wrapped is here!
+    share_text = f"""🎉 Our WhatsApp Wrapped is here!
 
 {share_statement}
 
